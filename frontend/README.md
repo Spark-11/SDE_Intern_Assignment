@@ -68,12 +68,11 @@ The ReqRes API blocks direct browser-origin requests, which results in:
 401 Unauthorized
 ```
 
-To fix this issue, a proxy is added inside **vite.config.js**.
+To solve this, two different solutions are used:
 
 ---
-
-###  `vite.config.js`
-
+## 1. Local Development (Vite Proxy)
+In local environment, Vite’s proxy bypasses the CORS issue.
 ```js
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -91,19 +90,43 @@ export default defineConfig({
     }
   }
 })
+
 ```
-### Usage in code
-Instead of calling :
-```bash
-https://reqres.in/api/users
-```
-Use : 
+
+### Usage in local code
 ```bash
 /api/api/users
 ```
-This bypasses browser CORS + 401 restrictions and allows smooth API communication.
+Vite converts it to:
+```bash
+https://reqres.in/api/users
+```
+---
+## 2. Production (Vercel) – Serverless API Route
+Vite proxy does NOT work on Vercel. So production uses a backend API route:
+### Create /api/users.js (Vercel Serverless Function)
+```js
+export default async function handler(req, res) {
+  const page = req.query.page || 1;
 
-##  How It Works
+  try {
+    const response = await fetch(`https://reqres.in/api/users?page=${page}`);
+    const data = await response.json();
+    return res.status(200).json(data);
+  } catch (err) {
+    console.error("API Error:", err);
+    return res.status(500).json({ error: err.message || "Something went wrong" });
+  }
+}
+```
+### Usage in Production
+```bash
+/api/users?page=1
+```
+This bypasses CORS completely because
+server → ReqRes calls are always allowed.
+
+## 📌 How It Works
 
 ###  1. App.jsx
 
